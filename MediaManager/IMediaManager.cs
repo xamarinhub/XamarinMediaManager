@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Notifications;
 using MediaManager.Playback;
@@ -21,21 +22,20 @@ namespace MediaManager
     {
         IMediaPlayer MediaPlayer { get; set; }
 
-        //TODO: Make browsable library
-        //IMediaLibrary MediaLibrary { get; set; }
+        IMediaLibrary Library { get; set; }
 
         /// <summary>
         /// Gets or sets the request headers.
         /// </summary>
         Dictionary<string, string> RequestHeaders { get; set; }
 
-        INotificationManager NotificationManager { get; set; }
+        INotificationManager Notification { get; set; }
 
-        IMediaExtractor MediaExtractor { get; set; }
+        IVolumeManager Volume { get; set; }
 
-        IVolumeManager VolumeManager { get; set; }
+        IMediaExtractor Extractor { get; set; }
 
-        IMediaQueue MediaQueue { get; set; }
+        IMediaQueue Queue { get; set; }
 
         void Init();
 
@@ -57,14 +57,21 @@ namespace MediaManager
         /// <param name="resourceName"></param>
         /// <param name="assembly"></param>
         /// <returns></returns>
-        Task<IMediaItem> Play(string resourceName, Assembly assembly);
+        Task<IMediaItem> PlayFromAssembly(string resourceName, Assembly assembly = null);
+
+        /// <summary>
+        /// Plays a native resource
+        /// </summary>
+        /// <param name="resourceName"></param>
+        /// <returns></returns>
+        Task<IMediaItem> PlayFromResource(string resourceName);
 
         /// <summary>
         /// Plays a list of media items
         /// </summary>
-        /// <param name="items"></param>
+        /// <param name="mediaItems"></param>
         /// <returns></returns>
-        Task<IMediaItem> Play(IEnumerable<IMediaItem> items);
+        Task<IMediaItem> Play(IEnumerable<IMediaItem> mediaItems);
 
         /// <summary>
         /// Plays a list of uri's
@@ -86,5 +93,13 @@ namespace MediaManager
         /// <param name="directoryInfo"></param>
         /// <returns></returns>
         Task<IMediaItem> Play(DirectoryInfo directoryInfo);
+
+        /// <summary>
+        /// Plays media from a Stream. The cacheName name must be a valid media name, like: something.mp4
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="cacheName"></param>
+        /// <returns></returns>
+        Task<IMediaItem> Play(Stream stream, string cacheName);
     }
 }

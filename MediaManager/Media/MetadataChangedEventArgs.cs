@@ -1,14 +1,11 @@
-﻿using System;
+﻿using MediaManager.Library;
 
 namespace MediaManager.Media
 {
-    public class MetadataChangedEventArgs : EventArgs
+    public class MetadataChangedEventArgs : MediaItemEventArgs
     {
-        public MetadataChangedEventArgs(IMediaItem mediaItem)
+        public MetadataChangedEventArgs(IMediaItem mediaItem) : base(mediaItem)
         {
-            MediaItem = mediaItem;
         }
-
-        public IMediaItem MediaItem { get; set; }
     }
 }

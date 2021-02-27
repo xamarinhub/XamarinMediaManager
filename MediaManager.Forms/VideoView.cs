@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Playback;
 using MediaManager.Player;
@@ -12,7 +12,8 @@ namespace MediaManager.Forms
     public class VideoView : View, IDisposable
     {
         protected static IMediaManager MediaManager => CrossMediaManager.Current;
-        protected static IVideoView PlayerView => MediaManager.MediaPlayer.VideoView;
+        protected static IMediaPlayer MediaPlayer => MediaManager.MediaPlayer;
+        protected static IVideoView PlayerView => MediaPlayer.VideoView;
 
         public VideoView()
         {
@@ -21,47 +22,84 @@ namespace MediaManager.Forms
             MediaManager.StateChanged += MediaManager_StateChanged;
             MediaManager.MediaItemChanged += MediaManager_MediaItemChanged;
 
+            MediaManager.Queue.QueueChanged += MediaQueue_QueueChanged;
+
             MediaManager.PropertyChanged += MediaManager_PropertyChanged;
-
-            MediaManager.MediaQueue.QueueChanged += MediaQueue_QueueChanged;
+            MediaManager.MediaPlayer.PropertyChanged += MediaPlayer_PropertyChanged;
         }
 
-        private void MediaQueue_QueueChanged(object sender, QueueChangedEventArgs e)
-        {
-            //var queue = MediaManager.MediaQueue.ToList();
-            //if (Source != queue)
-            //    Source = queue;
-        }
-
-        private void MediaManager_MediaItemChanged(object sender, MediaItemEventArgs e)
-        {
-            Current = e.MediaItem;
-        }
-
-        private void MediaManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        protected virtual void MediaPlayer_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {
-                //TODO: This seems not to be triggered
-                case nameof(MediaManager.Duration):
-                    Duration = MediaManager.Duration;
+                case nameof(MediaPlayer.ShowPlaybackControls):
+                    ShowControls = MediaPlayer.ShowPlaybackControls;
+                    break;
+                case nameof(MediaPlayer.VideoAspect):
+                    VideoAspect = MediaPlayer.VideoAspect;
+                    break;
+                case nameof(MediaPlayer.VideoHeight):
+                    VideoHeight = MediaPlayer.VideoHeight;
+                    break;
+                case nameof(MediaPlayer.VideoWidth):
+                    VideoWidth = MediaPlayer.VideoWidth;
+                    break;
+                case nameof(MediaPlayer.VideoPlaceholder):
+                    if (MediaPlayer.VideoPlaceholder is ImageSource imageSource)
+                        VideoPlaceholder = imageSource;
                     break;
                 default:
                     break;
             }
         }
 
-        private void MediaManager_StateChanged(object sender, StateChangedEventArgs e)
+        protected virtual void MediaManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(MediaManager.Duration):
+                    Duration = MediaManager.Duration;
+                    break;
+                case nameof(MediaManager.AutoPlay):
+                    AutoPlay = MediaManager.AutoPlay;
+                    break;
+                case nameof(MediaManager.RepeatMode):
+                    Repeat = MediaManager.RepeatMode;
+                    break;
+                case nameof(MediaManager.ShuffleMode):
+                    Shuffle = MediaManager.ShuffleMode;
+                    break;
+                case nameof(MediaManager.Speed):
+                    Speed = MediaManager.Speed;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        protected virtual void MediaQueue_QueueChanged(object sender, QueueChangedEventArgs e)
+        {
+            //var queue = MediaManager.MediaQueue.ToList();
+            //if (Source != queue)
+            //    Source = queue;
+        }
+
+        protected virtual void MediaManager_MediaItemChanged(object sender, MediaItemEventArgs e)
+        {
+            Current = e.MediaItem;
+        }
+
+        protected virtual void MediaManager_StateChanged(object sender, StateChangedEventArgs e)
         {
             State = e.State;
         }
 
-        private void MediaManager_PositionChanged(object sender, PositionChangedEventArgs e)
+        protected virtual void MediaManager_PositionChanged(object sender, Playback.PositionChangedEventArgs e)
         {
             Position = e.Position;
         }
 
-        private void MediaManager_BufferedChanged(object sender, BufferedChangedEventArgs e)
+        protected virtual void MediaManager_BufferedChanged(object sender, BufferedChangedEventArgs e)
         {
             Buffered = e.Buffered;
         }
@@ -70,7 +108,7 @@ namespace MediaManager.Forms
             BindableProperty.Create(nameof(VideoAspect), typeof(VideoAspectMode), typeof(VideoView), VideoAspectMode.AspectFit, propertyChanged: OnVideoAspectPropertyChanged, defaultValueCreator: x => MediaManager.MediaPlayer.VideoAspect);
 
         public static readonly BindableProperty AutoPlayProperty =
-            BindableProperty.Create(nameof(AutoPlay), typeof(bool), typeof(VideoView), true, defaultValueCreator: x => MediaManager.AutoPlay);
+            BindableProperty.Create(nameof(AutoPlay), typeof(bool), typeof(VideoView), true, propertyChanged: OnAutoPlayPropertyChanged, defaultValueCreator: x => MediaManager.AutoPlay);
 
         public static readonly BindableProperty BufferedProperty =
             BindableProperty.Create(nameof(Buffered), typeof(TimeSpan), typeof(VideoView), TimeSpan.Zero, defaultValueCreator: x => MediaManager.Buffered);
@@ -106,10 +144,13 @@ namespace MediaManager.Forms
             BindableProperty.Create(nameof(VideoWidth), typeof(int), typeof(VideoView), defaultValueCreator: x => MediaManager.MediaPlayer.VideoWidth);
 
         public static readonly BindableProperty VolumeProperty =
-            BindableProperty.Create(nameof(Volume), typeof(int), typeof(VideoView), 1, defaultValueCreator: x => MediaManager.VolumeManager.CurrentVolume);
+            BindableProperty.Create(nameof(Volume), typeof(int), typeof(VideoView), 1, propertyChanged: OnVolumePropertyChanged, defaultValueCreator: x => MediaManager.Volume.CurrentVolume);
 
         public static readonly BindableProperty SpeedProperty =
-            BindableProperty.Create(nameof(Speed), typeof(float), typeof(VideoView), 1.0f, defaultValueCreator: x => MediaManager.Speed);
+            BindableProperty.Create(nameof(Speed), typeof(float), typeof(VideoView), 1.0f, propertyChanged: OnSpeedPropertyChanged, defaultValueCreator: x => MediaManager.Speed);
+
+        public static readonly BindableProperty VideoPlaceholderProperty =
+            BindableProperty.Create(nameof(VideoPlaceholder), typeof(ImageSource), typeof(VideoView), null, propertyChanged: OnVideoPlaceholderPropertyChanged, defaultValueCreator: x => MediaManager.MediaPlayer.VideoPlaceholder?.ToImageSource());
 
         public VideoAspectMode VideoAspect
         {
@@ -180,11 +221,13 @@ namespace MediaManager.Forms
         public int VideoHeight
         {
             get { return (int)GetValue(VideoHeightProperty); }
+            internal set { SetValue(VideoHeightProperty, value); }
         }
 
         public int VideoWidth
         {
             get { return (int)GetValue(VideoWidthProperty); }
+            internal set { SetValue(VideoWidthProperty, value); }
         }
 
         public int Volume
@@ -199,6 +242,12 @@ namespace MediaManager.Forms
             set { SetValue(SpeedProperty, value); }
         }
 
+        public ImageSource VideoPlaceholder
+        {
+            get { return (ImageSource)GetValue(VideoPlaceholderProperty); }
+            set { SetValue(VideoPlaceholderProperty, value); }
+        }
+
         private static async void OnSourcePropertyChanged(BindableObject bindable, object oldValue, object newValue)
         {
             //Prevent loop with MediaQueue_QueueChanged
@@ -211,14 +260,12 @@ namespace MediaManager.Forms
 
         private static void OnShowControlsPropertyChanged(BindableObject bindable, object oldValue, object newValue)
         {
-            if (PlayerView != null)
-                PlayerView.ShowControls = (bool)newValue;
+            MediaManager.MediaPlayer.ShowPlaybackControls = (bool)newValue;
         }
 
         private static void OnVideoAspectPropertyChanged(BindableObject bindable, object oldValue, object newValue)
         {
-            if (PlayerView != null)
-                PlayerView.VideoAspect = (VideoAspectMode)newValue;
+            MediaManager.MediaPlayer.VideoAspect = (VideoAspectMode)newValue;
         }
 
         private static void OnRepeatPropertyChanged(BindableObject bindable, object oldValue, object newValue)
@@ -231,16 +278,40 @@ namespace MediaManager.Forms
             MediaManager.ShuffleMode = (ShuffleMode)newValue;
         }
 
-        public void Dispose()
+        private static void OnVolumePropertyChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            MediaManager.Volume.CurrentVolume = (int)newValue;
+        }
+
+        private static void OnSpeedPropertyChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            MediaManager.Speed = (float)newValue;
+        }
+
+        private static void OnAutoPlayPropertyChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            MediaManager.AutoPlay = (bool)newValue;
+        }
+
+        private static async void OnVideoPlaceholderPropertyChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+#if !NETSTANDARD
+            if (newValue is Xamarin.Forms.ImageSource imageSource)
+                MediaManager.MediaPlayer.VideoPlaceholder = await imageSource.ToNative().ConfigureAwait(false);
+#endif
+        }
+
+        public virtual void Dispose()
         {
             MediaManager.BufferedChanged -= MediaManager_BufferedChanged;
             MediaManager.PositionChanged -= MediaManager_PositionChanged;
             MediaManager.StateChanged -= MediaManager_StateChanged;
             MediaManager.MediaItemChanged -= MediaManager_MediaItemChanged;
 
-            MediaManager.PropertyChanged -= MediaManager_PropertyChanged;
+            MediaManager.Queue.QueueChanged -= MediaQueue_QueueChanged;
 
-            MediaManager.MediaQueue.QueueChanged -= MediaQueue_QueueChanged;
+            MediaManager.PropertyChanged -= MediaManager_PropertyChanged;
+            MediaManager.MediaPlayer.PropertyChanged -= MediaPlayer_PropertyChanged;
         }
     }
 }

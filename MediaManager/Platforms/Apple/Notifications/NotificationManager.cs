@@ -1,4 +1,5 @@
-﻿using MediaManager.Notifications;
+﻿using System;
+using MediaManager.Notifications;
 using MediaPlayer;
 
 namespace MediaManager.Platforms.Apple.Notifications
@@ -78,9 +79,11 @@ namespace MediaManager.Platforms.Apple.Notifications
                     CommandCenter.SeekForwardCommand.AddTarget(SeekForwardCommand);
 
                     CommandCenter.SkipBackwardCommand.Enabled = true;
+                    CommandCenter.SkipBackwardCommand.PreferredIntervals = new double[] { MediaManager.StepSizeBackward.TotalSeconds };
                     CommandCenter.SkipBackwardCommand.AddTarget(SkipBackwardCommand);
 
                     CommandCenter.SkipForwardCommand.Enabled = true;
+                    CommandCenter.SkipForwardCommand.PreferredIntervals = new double[] { MediaManager.StepSizeForward.TotalSeconds };
                     CommandCenter.SkipForwardCommand.AddTarget(SkipForwardCommand);
 
                     CommandCenter.ChangeRepeatModeCommand.Enabled = true;
@@ -88,6 +91,9 @@ namespace MediaManager.Platforms.Apple.Notifications
 
                     CommandCenter.ChangeShuffleModeCommand.Enabled = true;
                     CommandCenter.ChangeShuffleModeCommand.AddTarget(ShuffleCommand);
+
+                    CommandCenter.ChangePlaybackPositionCommand.Enabled = true;
+                    CommandCenter.ChangePlaybackPositionCommand.AddTarget(PlaybackPositionCommand);
                 }
                 else
                 {
@@ -106,13 +112,15 @@ namespace MediaManager.Platforms.Apple.Notifications
                     CommandCenter.ChangeRepeatModeCommand.Enabled = false;
 
                     CommandCenter.ChangeShuffleModeCommand.Enabled = false;
+
+                    CommandCenter.ChangePlaybackPositionCommand.Enabled = false;
                 }
             }
         }
 
         public override void UpdateNotification()
         {
-            var mediaItem = MediaManager.MediaQueue.Current;
+            var mediaItem = MediaManager.Queue.Current;
 
             if (mediaItem == null || !Enabled)
             {
@@ -122,23 +130,24 @@ namespace MediaManager.Platforms.Apple.Notifications
 
             var nowPlayingInfo = new MPNowPlayingInfo
             {
-                Title = mediaItem.Title,
+                Title = mediaItem.DisplayTitle,
                 AlbumTitle = mediaItem.Album,
                 AlbumTrackNumber = mediaItem.TrackNumber,
                 AlbumTrackCount = mediaItem.NumTracks,
-                Artist = mediaItem.Artist,
+                Artist = mediaItem.DisplaySubtitle,
                 Composer = mediaItem.Composer,
                 DiscNumber = mediaItem.DiscNumber,
                 Genre = mediaItem.Genre,
                 ElapsedPlaybackTime = MediaManager.Position.TotalSeconds,
                 PlaybackDuration = MediaManager.Duration.TotalSeconds,
-                PlaybackQueueIndex = MediaManager.MediaQueue.CurrentIndex,
-                PlaybackQueueCount = MediaManager.MediaQueue.Count
+                PlaybackQueueIndex = MediaManager.Queue.CurrentIndex,
+                PlaybackQueueCount = MediaManager.Queue.Count,
+                IsLiveStream = mediaItem.IsLive
             };
 
             if (MediaManager.IsPlaying())
             {
-                nowPlayingInfo.PlaybackRate = 1f;
+                nowPlayingInfo.PlaybackRate = 1f; // MediaManager.Player.Rate?
             }
             else
             {
@@ -146,7 +155,7 @@ namespace MediaManager.Platforms.Apple.Notifications
             }
 
 #if __IOS__ || __TVOS__
-            var cover = mediaItem.AlbumArt as UIKit.UIImage;
+            var cover = mediaItem.DisplayImage as UIKit.UIImage;
 
             if (cover != null)
             {
@@ -157,73 +166,88 @@ namespace MediaManager.Platforms.Apple.Notifications
             MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = nowPlayingInfo;
         }
 
-        private MPRemoteCommandHandlerStatus SkipBackwardCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus SkipBackwardCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.StepBackward();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus SkipForwardCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus SkipForwardCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.StepForward();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus StopCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus StopCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.Stop();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus SeekForwardCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus SeekForwardCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.StepForward();
+            UpdateNotification();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus SeekBackwardCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus SeekBackwardCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.StepBackward();
+            UpdateNotification();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus PreviousCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus PreviousCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.PlayPrevious();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus PauseCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus PauseCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.Pause();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus NextCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus NextCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.PlayNext();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus ShuffleCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus ShuffleCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.ToggleShuffle();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus RepeatCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus PlaybackPositionCommand(MPRemoteCommandEvent arg)
+        {
+            if (!(arg is MPChangePlaybackPositionCommandEvent e))
+            {
+                return MPRemoteCommandHandlerStatus.CommandFailed;
+            }
+
+            MediaManager.SeekTo(TimeSpan.FromSeconds(e.PositionTime));
+
+            UpdateNotification();
+            return MPRemoteCommandHandlerStatus.Success;
+        }
+
+        protected virtual MPRemoteCommandHandlerStatus RepeatCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.ToggleRepeat();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus PlayCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus PlayCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.Play();
             return MPRemoteCommandHandlerStatus.Success;
         }
 
-        private MPRemoteCommandHandlerStatus PlayPauseCommand(MPRemoteCommandEvent arg)
+        protected virtual MPRemoteCommandHandlerStatus PlayPauseCommand(MPRemoteCommandEvent arg)
         {
             MediaManager.PlayPause();
             return MPRemoteCommandHandlerStatus.Success;

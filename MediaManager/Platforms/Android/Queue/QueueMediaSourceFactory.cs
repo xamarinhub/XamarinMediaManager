@@ -9,6 +9,8 @@ namespace MediaManager.Platforms.Android.Queue
 {
     public class QueueMediaSourceFactory : Java.Lang.Object, TimelineQueueEditor.IMediaSourceFactory
     {
+        protected MediaManagerImplementation MediaManager => CrossMediaManager.Android;
+
         public QueueMediaSourceFactory()
         {
         }
@@ -19,8 +21,12 @@ namespace MediaManager.Platforms.Android.Queue
 
         public IMediaSource CreateMediaSource(MediaDescriptionCompat description)
         {
-            //TODO: We should be able to know the type here
-            return description?.ToMediaSource(MediaManager.Media.MediaType.Default);
+            //TODO: We should be able to know the exact type here
+            var mediaItem = description.ToMediaItem();
+            var fileName = MediaManager.Extractor.GetFileName(mediaItem.MediaUri);
+            var fileExtension = MediaManager.Extractor.GetFileExtension(fileName);
+            var mediaType = MediaManager.Extractor.GetMediaType(fileExtension);
+            return description?.ToMediaSource(mediaType);
         }
     }
 }

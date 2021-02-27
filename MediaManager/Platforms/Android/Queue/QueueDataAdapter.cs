@@ -4,6 +4,7 @@ using Android.Runtime;
 using Android.Support.V4.Media;
 using Com.Google.Android.Exoplayer2.Ext.Mediasession;
 using Com.Google.Android.Exoplayer2.Source;
+using MediaManager.Library;
 using MediaManager.Platforms.Android.Media;
 
 namespace MediaManager.Platforms.Android.Queue
@@ -16,7 +17,7 @@ namespace MediaManager.Platforms.Android.Queue
         public QueueDataAdapter(ConcatenatingMediaSource mediaSource)
         {
             _mediaSource = mediaSource;
-            //_mediaManager.MediaQueue.CollectionChanged += MediaQueue_CollectionChanged;
+            MediaManager.Queue.MediaItems.CollectionChanged += MediaQueue_CollectionChanged;
         }
 
         protected QueueDataAdapter(IntPtr handle, JniHandleOwnership transfer) : base(handle, transfer)
@@ -25,31 +26,30 @@ namespace MediaManager.Platforms.Android.Queue
 
         public void Add(int index, MediaDescriptionCompat description)
         {
-            MediaManager.MediaQueue.Insert(index, description.ToMediaItem());
+            MediaManager.Queue.Insert(index, description.ToMediaItem());
         }
 
         public MediaDescriptionCompat GetMediaDescription(int index)
         {
-            return MediaManager.MediaQueue.ElementAtOrDefault(index)?.ToMediaDescription();
+            return MediaManager.Queue.ElementAtOrDefault(index)?.ToMediaDescription();
         }
 
         public void Move(int oldIndex, int newIndex)
         {
-            MediaManager.MediaQueue.Move(oldIndex, newIndex);
+            MediaManager.Queue.Move(oldIndex, newIndex);
         }
 
         public void Remove(int index)
         {
-            MediaManager.MediaQueue.RemoveAt(index);
+            MediaManager.Queue.RemoveAt(index);
         }
-        //TODO: Find out if queue also need to get picked up on changes. Maybe when people add items directly to the queue while playing already.
-        /*
+
         private void MediaQueue_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
                 case System.Collections.Specialized.NotifyCollectionChangedAction.Add:
-                    if (_mediaSource.Size != _mediaManager.MediaQueue.Count)
+                    if (_mediaSource.Size != MediaManager.Queue.Count)
                     {
                         for (int i = e.NewItems.Count - 1; i >= 0; i--)
                         {
@@ -81,6 +81,15 @@ namespace MediaManager.Platforms.Android.Queue
                         _mediaSource.MoveMediaSource(e.OldStartingIndex, e.NewStartingIndex);
                     break;
                 case System.Collections.Specialized.NotifyCollectionChangedAction.Remove:
+                    if (e.OldItems.Count > 1)
+                    {
+                        for (int i = 0; i < e.OldItems.Count; i++)
+                            _mediaSource.RemoveMediaSource(e.OldStartingIndex);
+                    }
+                    else
+                        _mediaSource.RemoveMediaSource(e.OldStartingIndex);
+                    break;
+                case System.Collections.Specialized.NotifyCollectionChangedAction.Replace:
                     if (e.NewItems.Count > 1)
                     {
                         for (int i = 0; i > e.NewItems.Count; i++)
@@ -88,13 +97,23 @@ namespace MediaManager.Platforms.Android.Queue
                     }
                     else
                         _mediaSource.RemoveMediaSource(e.OldStartingIndex);
+
+                    for (int i = e.NewItems.Count - 1; i >= 0; i--)
+                    {
+                        var mediaItem = (IMediaItem)e.NewItems[i];
+                        _mediaSource.AddMediaSource(e.NewStartingIndex, mediaItem.ToMediaSource());
+                    }
                     break;
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Replace:
-                    throw new ArgumentException("Replacing in MediaQueue not supported.");
                 case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
                     _mediaSource.Clear();
                     break;
             }
-        }*/
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            MediaManager.Queue.MediaItems.CollectionChanged -= MediaQueue_CollectionChanged;
+            base.Dispose(disposing);
+        }
     }
 }

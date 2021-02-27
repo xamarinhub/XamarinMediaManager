@@ -5,7 +5,6 @@ using MediaManager.Platforms.Uap.Media;
 using MediaManager.Platforms.Uap.Notifications;
 using MediaManager.Platforms.Uap.Player;
 using MediaManager.Platforms.Uap.Volume;
-using MediaManager.Playback;
 using MediaManager.Player;
 using MediaManager.Volume;
 using Windows.Media.Playback;
@@ -36,42 +35,42 @@ namespace MediaManager
 
         public MediaPlayer Player => WindowsMediaPlayer.Player;
 
-        private IVolumeManager _volumeManager;
-        public override IVolumeManager VolumeManager
+        private IVolumeManager _volume;
+        public override IVolumeManager Volume
         {
             get
             {
-                if (_volumeManager == null)
-                    _volumeManager = new VolumeManager();
-                return _volumeManager;
+                if (_volume == null)
+                    _volume = new VolumeManager();
+                return _volume;
             }
-            set => SetProperty(ref _volumeManager, value);
+            set => SetProperty(ref _volume, value);
         }
 
-        private IMediaExtractor _mediaExtractor;
-        public override IMediaExtractor MediaExtractor
+        private IMediaExtractor _extractor;
+        public override IMediaExtractor Extractor
         {
             get
             {
-                if (_mediaExtractor == null)
-                    _mediaExtractor = new MediaExtractor();
-                return _mediaExtractor;
+                if (_extractor == null)
+                    _extractor = new MediaExtractor();
+                return _extractor;
             }
-            set => SetProperty(ref _mediaExtractor, value);
+            set => SetProperty(ref _extractor, value);
         }
 
 
-        private INotificationManager _notificationManager;
-        public override INotificationManager NotificationManager
+        private INotificationManager _notification;
+        public override INotificationManager Notification
         {
             get
             {
-                if (_notificationManager == null)
-                    _notificationManager = new NotificationManager();
+                if (_notification == null)
+                    _notification = new NotificationManager();
 
-                return _notificationManager;
+                return _notification;
             }
-            set => SetProperty(ref _notificationManager, value);
+            set => SetProperty(ref _notification, value);
         }
 
         public override TimeSpan Position => WindowsMediaPlayer?.Player?.PlaybackSession?.Position ?? TimeSpan.Zero;
@@ -93,30 +92,6 @@ namespace MediaManager
             }
         }
 
-        public override RepeatMode RepeatMode
-        {
-            get
-            {
-                if (Player.IsLoopingEnabled)
-                    return RepeatMode.All;
-                else
-                    return RepeatMode.Off;
-            }
-            set
-            {
-                switch (value)
-                {
-                    case RepeatMode.Off:
-                        Player.IsLoopingEnabled = false;
-                        break;
-                    case RepeatMode.One:
-                    case RepeatMode.All:
-                        Player.IsLoopingEnabled = true;
-                        break;
-                }
-            }
-        }
-
         protected DisplayRequest _displayRequest;
         protected bool _keepScreenOn;
         public override bool KeepScreenOn
@@ -127,7 +102,7 @@ namespace MediaManager
             }
             set
             {
-                if(SetProperty(ref _keepScreenOn, value))
+                if (SetProperty(ref _keepScreenOn, value))
                 {
                     if (_displayRequest == null)
                         _displayRequest = new DisplayRequest();

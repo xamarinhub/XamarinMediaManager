@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Platforms.Uap.Media;
 using MediaManager.Platforms.Uap.Video;
 using MediaManager.Player;
 using MediaManager.Video;
 using Windows.Media.Playback;
+using Windows.UI.Xaml.Media;
 using MediaPlayerState = MediaManager.Player.MediaPlayerState;
 
 namespace MediaManager.Platforms.Uap.Player
 {
-    public class WindowsMediaPlayer : IMediaPlayer<MediaPlayer, VideoView>
+    public class WindowsMediaPlayer : MediaPlayerBase, IMediaPlayer<MediaPlayer, VideoView>
     {
         public WindowsMediaPlayer()
         {
@@ -18,26 +20,19 @@ namespace MediaManager.Platforms.Uap.Player
 
         protected MediaManagerImplementation MediaManager = CrossMediaManager.Windows;
 
-        public bool AutoAttachVideoView { get; set; } = true;
-
-        public VideoAspectMode VideoAspect { get; set; }
-        public bool ShowPlaybackControls { get; set; } = true;
-
-        public int VideoHeight => 0;
-        public int VideoWidth => 0;
-
         public VideoView PlayerView => VideoView as VideoView;
 
         private IVideoView _videoView;
-        public IVideoView VideoView
+        public override IVideoView VideoView
         {
             get => _videoView;
             set
             {
-                _videoView = value;
+                SetProperty(ref _videoView, value);
                 if (PlayerView != null)
                 {
                     PlayerView.PlayerView.SetMediaPlayer(Player);
+                    UpdateVideoView();
                 }
             }
         }
@@ -52,14 +47,8 @@ namespace MediaManager.Platforms.Uap.Player
                     Initialize();
                 return _player;
             }
-            set
-            {
-                _player = value;
-            }
+            set => SetProperty(ref _player, value);
         }
-
-        public event BeforePlayingEventHandler BeforePlaying;
-        public event AfterPlayingEventHandler AfterPlaying;
 
         private MediaPlaybackList _mediaPlaybackList;
         public MediaPlaybackList MediaPlaybackList
@@ -73,7 +62,48 @@ namespace MediaManager.Platforms.Uap.Player
             private set => _mediaPlaybackList = value;
         }
 
-        public void Initialize()
+        public override void UpdateVideoAspect(VideoAspectMode videoAspectMode)
+        {
+            if (PlayerView == null)
+                return;
+
+            var playerView = PlayerView.PlayerView;
+
+            switch (videoAspectMode)
+            {
+                case VideoAspectMode.None:
+                    playerView.Stretch = Windows.UI.Xaml.Media.Stretch.None;
+                    break;
+                case VideoAspectMode.AspectFit:
+                    playerView.Stretch = Windows.UI.Xaml.Media.Stretch.Uniform;
+                    break;
+                case VideoAspectMode.AspectFill:
+                    playerView.Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill;
+                    break;
+                default:
+                    playerView.Stretch = Windows.UI.Xaml.Media.Stretch.None;
+                    break;
+            }
+        }
+
+        public override void UpdateShowPlaybackControls(bool showPlaybackControls)
+        {
+            if (PlayerView == null)
+                return;
+
+            PlayerView.PlayerView.AreTransportControlsEnabled = showPlaybackControls;
+        }
+
+        public override void UpdateVideoPlaceholder(object value)
+        {
+            if (PlayerView?.PlayerView == null)
+                return;
+
+            if (value is ImageSource imageSource)
+                PlayerView.PlayerView.PosterSource = imageSource;
+        }
+
+        public virtual void Initialize()
         {
             Player = new MediaPlayer();
             Player.AudioCategory = MediaPlayerAudioCategory.Media;
@@ -91,92 +121,119 @@ namespace MediaManager.Platforms.Uap.Player
             Player.PlaybackSession.SeekCompleted += PlaybackSession_SeekCompleted;
         }
 
-        private void Player_MediaOpened(MediaPlayer sender, object args)
+        protected virtual void Player_MediaOpened(MediaPlayer sender, object args)
         {
 
         }
 
-        private void PlaybackSession_SeekCompleted(MediaPlaybackSession sender, object args)
-        {
-            //TODO: Maybe use this?
-        }
-
-        private void PlaybackSession_NaturalVideoSizeChanged(MediaPlaybackSession sender, object args)
-        {
-            //VideoHeight = sender.NaturalVideoHeight;
-        }
-
-        private void PlaybackSession_PositionChanged(MediaPlaybackSession sender, object args)
+        protected virtual void PlaybackSession_SeekCompleted(MediaPlaybackSession sender, object args)
         {
             //TODO: Maybe use this?
         }
 
-        private void PlaybackSession_BufferingProgressChanged(MediaPlaybackSession sender, object args)
+        protected virtual void PlaybackSession_NaturalVideoSizeChanged(MediaPlaybackSession sender, object args)
+        {
+            VideoHeight = (int)sender.NaturalVideoHeight;
+            VideoWidth = (int)sender.NaturalVideoWidth;
+        }
+
+        protected virtual void PlaybackSession_PositionChanged(MediaPlaybackSession sender, object args)
+        {
+            //TODO: Maybe use this?
+        }
+
+        protected virtual void PlaybackSession_BufferingProgressChanged(MediaPlaybackSession sender, object args)
         {
             MediaManager.Buffered = TimeSpan.FromMilliseconds(sender.BufferingProgress);
         }
 
-        private void PlaybackSession_PlaybackStateChanged(MediaPlaybackSession sender, object args)
+        protected virtual void PlaybackSession_PlaybackStateChanged(MediaPlaybackSession sender, object args)
         {
             MediaManager.State = sender.PlaybackState.ToMediaPlayerState();
         }
 
-        private void Player_MediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+        protected virtual void Player_MediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
         {
-            MediaManager.OnMediaItemFailed(this, new MediaItemFailedEventArgs(MediaManager.MediaQueue.Current, new Exception(args.ErrorMessage), args.ErrorMessage));
+            MediaManager.OnMediaItemFailed(this, new MediaItemFailedEventArgs(MediaManager.Queue.Current, new Exception(args.ErrorMessage), args.ErrorMessage));
         }
 
-        private void Player_MediaEnded(MediaPlayer sender, object args)
+        protected virtual void Player_MediaEnded(MediaPlayer sender, object args)
         {
-            MediaManager.OnMediaItemFinished(this, new MediaItemEventArgs(MediaManager.MediaQueue.Current));
+            MediaManager.OnMediaItemFinished(this, new MediaItemEventArgs(MediaManager.Queue.Current));
         }
 
-        public Task Pause()
+        public override Task Pause()
         {
             Player.Pause();
             return Task.CompletedTask;
         }
 
-        public async Task Play(IMediaItem mediaItem)
+        public override async Task Play(IMediaItem mediaItem)
         {
-            BeforePlaying?.Invoke(this, new MediaPlayerEventArgs(mediaItem, this));
+            InvokeBeforePlaying(this, new MediaPlayerEventArgs(mediaItem, this));
 
             MediaPlaybackList.Items.Clear();
-            foreach (var mediaQueueItem in MediaManager.MediaQueue)
+
+            foreach (var mediaQueueItem in MediaManager.Queue)
             {
-                var mediaPlaybackItem = new MediaPlaybackItem(await mediaQueueItem.ToMediaSource());
+                var mediaPlaybackItem = (await mediaQueueItem.ToMediaSource()).ToMediaPlaybackItem();
                 MediaPlaybackList.Items.Add(mediaPlaybackItem);
                 if (mediaQueueItem == mediaItem)
                 {
                     MediaPlaybackList.StartingItem = mediaPlaybackItem;
                 }
             }
-            Player.Source = MediaPlaybackList;
-            await Play();
+            await Play(MediaPlaybackList);
 
-            AfterPlaying?.Invoke(this, new MediaPlayerEventArgs(mediaItem, this));
+            InvokeAfterPlaying(this, new MediaPlayerEventArgs(mediaItem, this));
         }
 
-        public Task Play()
+        public override async Task Play(IMediaItem mediaItem, TimeSpan startAt, TimeSpan? stopAt = null)
+        {
+            InvokeBeforePlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+
+            MediaPlaybackList.Items.Clear();
+
+            foreach (var mediaQueueItem in MediaManager.Queue)
+            {
+                var mediaPlaybackItem = (await mediaQueueItem.ToMediaSource()).ToMediaPlaybackItem(startAt, stopAt);
+                MediaPlaybackList.Items.Add(mediaPlaybackItem);
+                if (mediaQueueItem == mediaItem)
+                {
+                    MediaPlaybackList.StartingItem = mediaPlaybackItem;
+                }
+            }
+            await Play(MediaPlaybackList);
+
+            InvokeAfterPlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+        }
+
+        public virtual async Task Play(IMediaPlaybackSource source)
+        {
+            Player.Source = source;
+            await Play();
+        }
+
+        public override Task Play()
         {
             Player.Play();
             return Task.CompletedTask;
         }
 
-        public Task SeekTo(TimeSpan position)
+        public override Task SeekTo(TimeSpan position)
         {
             Player.PlaybackSession.Position = position;
             return Task.CompletedTask;
         }
 
-        public async Task Stop()
+        public override async Task Stop()
         {
             Player.Pause();
             await SeekTo(TimeSpan.Zero);
             MediaManager.State = MediaPlayerState.Stopped;
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
             Player.MediaOpened -= Player_MediaOpened;
             Player.MediaEnded -= Player_MediaEnded;

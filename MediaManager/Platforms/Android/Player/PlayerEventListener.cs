@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Linq;
-using Android.Graphics;
 using Android.Runtime;
 using Com.Google.Android.Exoplayer2;
-using Com.Google.Android.Exoplayer2.Metadata.Id3;
 using Com.Google.Android.Exoplayer2.Source;
 using Com.Google.Android.Exoplayer2.Trackselection;
 
@@ -28,11 +25,13 @@ namespace MediaManager.Platforms.Android.Player
         public Action<int> OnRepeatModeChangedImpl { get; set; }
         public Action OnSeekProcessedImpl { get; set; }
         public Action<bool> OnShuffleModeEnabledChangedImpl { get; set; }
-        public Action<Timeline, Java.Lang.Object, int> OnTimelineChangedImpl { get; set; }
+        public Action<Timeline, int> OnTimelineChangedImpl { get; set; }
+        public Action<bool> OnIsPlayingChangedImpl { get; set; }
+        public Action<int> OnPlaybackSuppressionReasonChangedImpl { get; set; }
 
         public void OnTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections)
         {
-            for (var i = 0; i < trackGroups.Length; i++)
+            /*for (var i = 0; i < trackGroups.Length; i++)
             {
                 var trackGroup = trackGroups.Get(i);
                 for (var j = 0; j < trackGroup.Length; j++)
@@ -85,7 +84,7 @@ namespace MediaManager.Platforms.Android.Player
                         }
                     }
                 }
-            }
+            }*/
 
             OnTracksChangedImpl?.Invoke(trackGroups, trackSelections);
         }
@@ -130,9 +129,19 @@ namespace MediaManager.Platforms.Android.Player
             OnShuffleModeEnabledChangedImpl?.Invoke(shuffleModeEnabled);
         }
 
-        public void OnTimelineChanged(Timeline timeline, Java.Lang.Object manifest, int reason)
+        public void OnTimelineChanged(Timeline timeline, int reason)
         {
-            OnTimelineChangedImpl?.Invoke(timeline, manifest, reason);
+            OnTimelineChangedImpl?.Invoke(timeline, reason);
+        }
+
+        public void OnIsPlayingChanged(bool isPlaying)
+        {
+            OnIsPlayingChangedImpl?.Invoke(isPlaying);
+        }
+
+        public void OnPlaybackSuppressionReasonChanged(int playbackSuppressionReason)
+        {
+            OnPlaybackSuppressionReasonChangedImpl?.Invoke(playbackSuppressionReason);
         }
     }
 }

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MediaManager.Library;
 using MediaManager.Media;
 using Windows.Media.Core;
+using Windows.Media.Playback;
 using Windows.Storage;
 
 namespace MediaManager.Platforms.Uap.Media
@@ -11,14 +13,26 @@ namespace MediaManager.Platforms.Uap.Media
         public static async Task<MediaSource> ToMediaSource(this IMediaItem mediaItem)
         {
             //TODO: Get Metadata from MediaSource
-            switch (mediaItem.MediaLocation)
+            if (mediaItem.MediaLocation.IsLocal())
             {
-                case MediaLocation.FileSystem:
-                    var storageFile = await StorageFile.GetFileFromPathAsync(mediaItem.MediaUri);
-                    return MediaSource.CreateFromStorageFile(storageFile);
-                default:
-                    return MediaSource.CreateFromUri(new Uri(mediaItem.MediaUri));
+                var storageFile = await StorageFile.GetFileFromPathAsync(mediaItem.MediaUri);
+                return MediaSource.CreateFromStorageFile(storageFile);
             }
+            else
+                return MediaSource.CreateFromUri(new Uri(mediaItem.MediaUri));
+        }
+
+        public static MediaPlaybackItem ToMediaPlaybackItem(this MediaSource mediaSource)
+        {
+            return new MediaPlaybackItem(mediaSource);
+        }
+
+        public static MediaPlaybackItem ToMediaPlaybackItem(this MediaSource mediaSource, TimeSpan startAt, TimeSpan? stopAt = null)
+        {
+            if (stopAt is TimeSpan endTime)
+                return new MediaPlaybackItem(mediaSource, startAt, endTime);
+
+            return new MediaPlaybackItem(mediaSource, startAt);
         }
     }
 }

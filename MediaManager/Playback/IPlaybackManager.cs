@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Player;
 using MediaManager.Queue;
@@ -18,9 +19,14 @@ namespace MediaManager.Playback
     public interface IPlaybackManager : INotifyPropertyChanged
     {
         /// <summary>
-        /// Managing the step size for the step forward and step backward functions
+        /// Managing the step size for the step forward function
         /// </summary>
-        TimeSpan StepSize { get; set; }
+        TimeSpan StepSizeForward { get; set; }
+
+        /// <summary>
+        /// Managing the step size for the step backward function
+        /// </summary>
+        TimeSpan StepSizeBackward { get; set; }
 
         /// <summary>
         /// Reading the current status of the player
@@ -67,6 +73,12 @@ namespace MediaManager.Playback
         /// Will keep the screen on when set to true and a VideoView is on the screen and playing
         /// </summary>
         bool KeepScreenOn { get; set; }
+
+        bool RetryPlayOnFailed { get; set; }
+
+        bool PlayNextOnFailed { get; set; }
+
+        int MaxRetryCount { get; set; }
 
         /// <summary>
         /// Plays the current MediaItem

@@ -1,5 +1,4 @@
 ﻿using MediaManager.Forms.Platforms.iOS;
-using UIKit;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.iOS;
 
@@ -7,14 +6,12 @@ using Xamarin.Forms.Platform.iOS;
 namespace MediaManager.Forms.Platforms.iOS
 {
     [Foundation.Preserve(AllMembers = true)]
-    public class VideoViewRenderer : ViewRenderer<VideoView, UIView>
+    public class VideoViewRenderer : ViewRenderer<VideoView, MediaManager.Platforms.Ios.Video.VideoView>
     {
         private MediaManager.Platforms.Ios.Video.VideoView _videoView;
 
         protected override void OnElementChanged(ElementChangedEventArgs<VideoView> args)
         {
-            base.OnElementChanged(args);
-
             if (args.OldElement != null)
             {
                 args.OldElement.Dispose();
@@ -25,14 +22,18 @@ namespace MediaManager.Forms.Platforms.iOS
                 {
                     //TODO: maybe pass in the UIView to the videoview here
                     _videoView = new MediaManager.Platforms.Ios.Video.VideoView();
-
-                    //TODO: find a better way to set properties on load
-                    _videoView.ShowControls = args.NewElement.ShowControls;
-                    _videoView.VideoAspect = args.NewElement.VideoAspect;
-
                     SetNativeControl(_videoView);
                 }
             }
+
+            base.OnElementChanged(args);
+        }
+
+        protected override void SetBackgroundColor(Color color)
+        {
+            base.SetBackgroundColor(color);
+            if (Control?.PlayerViewController?.View != null)
+                Control.PlayerViewController.View.BackgroundColor = color.ToUIColor();
         }
 
         protected override void Dispose(bool disposing)

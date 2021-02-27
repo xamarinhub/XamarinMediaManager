@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using MediaManager.Media;
+using MediaManager.Library;
 using MediaManager.Playback;
 using MediaManager.Player;
 using MediaManager.Queue;
@@ -11,30 +11,65 @@ namespace MediaManager
 {
     public static partial class MediaManagerExtensions
     {
+        /// <summary>
+        /// Tries to Play the mediaSource by checking the type. Returns null when unable to find a playable type
+        /// </summary>
+        /// <param name="mediaManager"></param>
+        /// <param name="mediaSource"></param>
+        /// <returns></returns>
         public static async Task<IMediaItem> Play(this IMediaManager mediaManager, object mediaSource)
         {
+            IMediaItem mediaItem = null;
             switch (mediaSource)
             {
                 case string url:
-                    return await CrossMediaManager.Current.Play(url);
+                    mediaItem = await mediaManager.Play(url);
+                    break;
                 case IEnumerable<string> urls:
-                    return await CrossMediaManager.Current.Play(urls);
-                case IMediaItem mediaItem:
-                    return await CrossMediaManager.Current.Play(mediaItem);
+                    mediaItem = await mediaManager.Play(urls);
+                    break;
+                case IMediaItem media:
+                    mediaItem = await mediaManager.Play(media);
+                    break;
                 case IEnumerable<IMediaItem> mediaItems:
-                    return await CrossMediaManager.Current.Play(mediaItems);
+                    mediaItem = await mediaManager.Play(mediaItems);
+                    break;
                 case FileInfo fileInfo:
-                    return await CrossMediaManager.Current.Play(fileInfo);
+                    mediaItem = await mediaManager.Play(fileInfo);
+                    break;
                 case DirectoryInfo directoryInfo:
-                    return await CrossMediaManager.Current.Play(directoryInfo);
-                default:
-                    return null;
+                    mediaItem = await mediaManager.Play(directoryInfo);
+                    break;
+                case IAlbum album:
+                    mediaItem = await mediaManager.Play(album.MediaItems);
+                    break;
+                case IRadio radio:
+                    mediaItem = await mediaManager.Play(radio.MediaItems);
+                    break;
+                case IPlaylist playlist:
+                    mediaItem = await mediaManager.Play(playlist.MediaItems);
+                    break;
+                case IArtist artist:
+                    mediaItem = await mediaManager.Play(artist.AllTracks);
+                    break;
             }
+            return mediaItem;
         }
 
-        public static Task PlayPreviousOrSeekToStart(this IMediaManager mediaManager)
+        public static async Task<IMediaItem> Play(this IMediaManager mediaManager, IMediaItem mediaItem, TimeSpan startAt, TimeSpan? stopAt = null)
         {
-            if (mediaManager.Position < TimeSpan.FromSeconds(3))
+            if (mediaManager is MediaManagerBase mediaManagerBase)
+                mediaItem = await mediaManagerBase.PrepareQueueForPlayback(mediaItem);
+
+            await mediaManager.MediaPlayer.Play(mediaItem, startAt, stopAt);
+            return mediaItem;
+        }
+
+        public static Task PlayPreviousOrSeekToStart(this IMediaManager mediaManager, TimeSpan? timeSpan = null)
+        {
+            timeSpan = timeSpan ?? TimeSpan.FromSeconds(3);
+
+            if (mediaManager.Position < timeSpan)
                 return mediaManager.PlayPrevious();
             else
                 return SeekToStart(mediaManager);

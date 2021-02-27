@@ -1,4 +1,5 @@
 ﻿using MediaManager.Forms.Platforms.Tizen;
+using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
 
 [assembly: ExportRenderer(typeof(MediaManager.Forms.VideoView), typeof(VideoViewRenderer))]
@@ -10,8 +11,6 @@ namespace MediaManager.Forms.Platforms.Tizen
 
         protected override void OnElementChanged(ElementChangedEventArgs<VideoView> args)
         {
-            base.OnElementChanged(args);
-
             if (args.OldElement != null)
             {
                 args.OldElement.Dispose();
@@ -21,14 +20,18 @@ namespace MediaManager.Forms.Platforms.Tizen
                 if (Control == null)
                 {
                     _videoView = new MediaManager.Platforms.Tizen.Video.VideoView(NativeView.Parent);
-
-                    //TODO: find a better way to set properties on load
-                    _videoView.ShowControls = args.NewElement.ShowControls;
-                    _videoView.VideoAspect = args.NewElement.VideoAspect;
-
                     SetNativeControl(_videoView);
                 }
             }
+
+            base.OnElementChanged(args);
+        }
+
+        protected override void UpdateBackgroundColor(bool initialize)
+        {
+            base.UpdateBackgroundColor(initialize);
+            if (Control != null)
+                Control.Color = Element.BackgroundColor.ToNative();
         }
 
         protected override void Dispose(bool disposing)

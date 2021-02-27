@@ -3,9 +3,11 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Runtime;
-using Android.Support.V4.Content;
 using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
+using AndroidX.Core.Content;
+using AndroidX.Media;
+using AndroidX.Media.Session;
 using Com.Google.Android.Exoplayer2.UI;
 using MediaManager.Platforms.Android.Media;
 
@@ -19,8 +21,8 @@ namespace MediaManager.Platforms.Android.MediaSession
         protected MediaDescriptionAdapter MediaDescriptionAdapter { get; set; }
         protected PlayerNotificationManager PlayerNotificationManager
         {
-            get => (MediaManager.NotificationManager as Notifications.NotificationManager).PlayerNotificationManager;
-            set => (MediaManager.NotificationManager as Notifications.NotificationManager).PlayerNotificationManager = value;
+            get => (MediaManager.Notification as Notifications.NotificationManager).PlayerNotificationManager;
+            set => (MediaManager.Notification as Notifications.NotificationManager).PlayerNotificationManager = value;
         }
         protected MediaControllerCompat MediaController => MediaManager.MediaController;
 
@@ -42,8 +44,15 @@ namespace MediaManager.Platforms.Android.MediaSession
         {
             base.OnCreate();
 
-            PrepareMediaSession();
-            PrepareNotificationManager();
+            try
+            {
+                PrepareMediaSession();
+                PrepareNotificationManager();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
 
             MediaManager.StateChanged += MediaManager_StateChanged;
         }
@@ -67,7 +76,7 @@ namespace MediaManager.Platforms.Android.MediaSession
                 case global::MediaManager.Player.MediaPlayerState.Playing:
                     if (!IsForeground)
                     {
-                        PlayerNotificationManager?.SetOngoing(true);
+                        //PlayerNotificationManager?.SetOngoing(true);
                         PlayerNotificationManager?.Invalidate();
 
                         IsForeground = true;
@@ -78,7 +87,7 @@ namespace MediaManager.Platforms.Android.MediaSession
                     {
                         //ServiceCompat.StopForeground(this, ServiceCompat.StopForegroundDetach);
                         StopForeground(false);
-                        PlayerNotificationManager?.SetOngoing(false);
+                        //PlayerNotificationManager?.SetOngoing(false);
                         PlayerNotificationManager?.Invalidate();
                         IsForeground = false;
                     }
@@ -118,26 +127,26 @@ namespace MediaManager.Platforms.Android.MediaSession
                 StartForeground(notificationId, notification);
                 IsForeground = true;
             };
-            NotificationListener.OnNotificationCancelledImpl = (notificationId) =>
+            NotificationListener.OnNotificationCancelledImpl = (notificationId, dismissedByUser) =>
             {
-                //TODO: in new exoplayer use StopForeground(false) or use dismissedByUser
-                StopForeground(true);
+                StopForeground(dismissedByUser);
                 //ServiceCompat.StopForeground(this, ServiceCompat.StopForegroundRemove);
 
                 StopSelf();
                 IsForeground = false;
             };
 
-            PlayerNotificationManager.SetFastForwardIncrementMs((long)MediaManager.StepSize.TotalMilliseconds);
-            PlayerNotificationManager.SetRewindIncrementMs((long)MediaManager.StepSize.TotalMilliseconds);
+            PlayerNotificationManager.SetFastForwardIncrementMs((long)MediaManager.StepSizeForward.TotalMilliseconds);
+            PlayerNotificationManager.SetRewindIncrementMs((long)MediaManager.StepSizeBackward.TotalMilliseconds);
             PlayerNotificationManager.SetNotificationListener(NotificationListener);
             PlayerNotificationManager.SetMediaSessionToken(SessionToken);
-            PlayerNotificationManager.SetOngoing(true);
-            PlayerNotificationManager.SetUsePlayPauseActions(MediaManager.NotificationManager.ShowPlayPauseControls);
-            PlayerNotificationManager.SetUseNavigationActions(MediaManager.NotificationManager.ShowNavigationControls);
+            //PlayerNotificationManager.SetOngoing(true);
+            PlayerNotificationManager.SetUsePlayPauseActions(MediaManager.Notification.ShowPlayPauseControls);
+            PlayerNotificationManager.SetUseNavigationActions(MediaManager.Notification.ShowNavigationControls);
+            PlayerNotificationManager.SetSmallIcon(MediaManager.NotificationIconResource);
 
             //Must be called to start the connection
-            (MediaManager.NotificationManager as Notifications.NotificationManager).Player = MediaManager.Player;
+            (MediaManager.Notification as Notifications.NotificationManager).Player = MediaManager.Player;
             //PlayerNotificationManager.SetPlayer(MediaManager.AndroidMediaPlayer.Player);
         }
 
@@ -164,7 +173,7 @@ namespace MediaManager.Platforms.Android.MediaSession
             StopForeground(true);
             MediaManager.StateChanged -= MediaManager_StateChanged;
 
-            (MediaManager.NotificationManager as Notifications.NotificationManager).Player = null;
+            (MediaManager.Notification as Notifications.NotificationManager).Player = null;
 
             MediaDescriptionAdapter.Dispose();
             MediaDescriptionAdapter = null;
@@ -196,7 +205,7 @@ namespace MediaManager.Platforms.Android.MediaSession
         {
             var mediaItems = new JavaList<MediaBrowserCompat.MediaItem>();
 
-            foreach (var item in MediaManager.MediaQueue)
+            foreach (var item in MediaManager.Queue)
                 mediaItems.Add(item.ToMediaBrowserMediaItem());
 
             result.SendResult(mediaItems);

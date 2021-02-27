@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace MediaManager
 {
@@ -25,6 +24,27 @@ namespace MediaManager
             storage = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+
+        protected virtual void SetProperty<T>(ref T storage, T value, Action<bool> action, [CallerMemberName] string propertyName = null)
+        {
+            if (action == null)
+            {
+                throw new ArgumentException($"{nameof(action)} should not be null", nameof(action));
+            }
+
+            action.Invoke(SetProperty(ref storage, value, propertyName));
+        }
+
+        protected virtual bool SetProperty<T>(ref T storage, T value, Action afterAction, [CallerMemberName] string propertyName = null)
+        {
+            if (SetProperty(ref storage, value, propertyName))
+            {
+                afterAction?.Invoke();
+                return true;
+            }
+
+            return false;
         }
     }
 }

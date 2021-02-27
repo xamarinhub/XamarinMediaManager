@@ -6,7 +6,6 @@ using MediaManager.Platforms.Apple.Media;
 using MediaManager.Platforms.Apple.Notifications;
 using MediaManager.Platforms.Apple.Player;
 using MediaManager.Platforms.Apple.Volume;
-using MediaManager.Playback;
 using MediaManager.Player;
 using MediaManager.Volume;
 
@@ -37,7 +36,7 @@ namespace MediaManager
         public AVQueuePlayer Player => ((AppleMediaPlayer)MediaPlayer).Player;
 
         private IMediaExtractor _mediaExtractor;
-        public override IMediaExtractor MediaExtractor
+        public override IMediaExtractor Extractor
         {
             get
             {
@@ -50,29 +49,29 @@ namespace MediaManager
             set => SetProperty(ref _mediaExtractor, value);
         }
 
-        private IVolumeManager _volumeManager;
-        public override IVolumeManager VolumeManager
+        private IVolumeManager _volume;
+        public override IVolumeManager Volume
         {
             get
             {
-                if (_volumeManager == null)
-                    _volumeManager = new VolumeManager();
-                return _volumeManager;
+                if (_volume == null)
+                    _volume = new VolumeManager();
+                return _volume;
             }
-            set => SetProperty(ref _volumeManager, value);
+            set => SetProperty(ref _volume, value);
         }
 
-        private INotificationManager _notificationManager;
-        public override INotificationManager NotificationManager
+        private INotificationManager _notification;
+        public override INotificationManager Notification
         {
             get
             {
-                if (_notificationManager == null)
-                    _notificationManager = new NotificationManager();
+                if (_notification == null)
+                    _notification = new NotificationManager();
 
-                return _notificationManager;
+                return _notification;
             }
-            set => SetProperty(ref _notificationManager, value);
+            set => SetProperty(ref _notification, value);
         }
 
         public override TimeSpan Position
@@ -80,6 +79,10 @@ namespace MediaManager
             get
             {
                 if (Player?.CurrentItem == null)
+                {
+                    return TimeSpan.Zero;
+                }
+                if (double.IsNaN(Player.CurrentTime.Seconds) || Player.CurrentTime.IsIndefinite)
                 {
                     return TimeSpan.Zero;
                 }
@@ -95,6 +98,8 @@ namespace MediaManager
                 {
                     return TimeSpan.Zero;
                 }
+                if (Player.CurrentItem.Duration.IsIndefinite)
+                    return TimeSpan.Zero;
                 if (double.IsNaN(Player.CurrentItem.Duration.Seconds))
                 {
                     return TimeSpan.Zero;
@@ -115,31 +120,6 @@ namespace MediaManager
             {
                 if (AppleMediaPlayer?.Player != null)
                     Player.Rate = value;
-            }
-        }
-
-        private AVPlayerLooper _looper;
-        public override RepeatMode RepeatMode
-        {
-            get
-            {
-                return _looper != null ? RepeatMode.One : RepeatMode.All;
-            }
-            set
-            {
-                switch (value)
-                {
-                    case RepeatMode.Off:
-                        _looper = null;
-                        break;
-                    case RepeatMode.One:
-                    case RepeatMode.All:
-                        _looper = AVPlayerLooper.FromPlayer(Player, Player.CurrentItem);
-                        break;
-                    default:
-                        break;
-                }
-                //MediaPlayer.RepeatMode = value;
             }
         }
     }

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Android.App;
 using Android.Graphics;
 using Android.Runtime;
 using Com.Google.Android.Exoplayer2;
 using Com.Google.Android.Exoplayer2.UI;
-using MediaManager.Media;
+using Java.Lang;
 
 namespace MediaManager.Platforms.Android.Media
 {
@@ -25,25 +26,49 @@ namespace MediaManager.Platforms.Android.Media
         {
             return MediaManager.SessionActivityPendingIntent;
         }
-
+        /*
         public string GetCurrentContentText(IPlayer player)
         {
-            return MediaManager.MediaQueue.ElementAtOrDefault(player.CurrentWindowIndex)?.GetTitle();
+            return MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplayTitle;
         }
 
         public string GetCurrentContentTitle(IPlayer player)
         {
-            return MediaManager.MediaQueue.ElementAtOrDefault(player.CurrentWindowIndex)?.GetContentTitle();
-        }
-
-        public Bitmap GetCurrentLargeIcon(IPlayer player, PlayerNotificationManager.BitmapCallback callback)
-        {
-            return MediaManager.MediaQueue.ElementAtOrDefault(player.CurrentWindowIndex)?.GetCover();
+            return MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplaySubtitle;
         }
 
         public string GetCurrentSubText(IPlayer player)
         {
-            return MediaManager.MediaQueue.ElementAtOrDefault(player.CurrentWindowIndex)?.GetSubText();
+            return MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplayDescription;
+        }*/
+
+        public Bitmap GetCurrentLargeIcon(IPlayer player, PlayerNotificationManager.BitmapCallback callback)
+        {
+            var mediaItem = MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex);
+            if (mediaItem != null && mediaItem.DisplayImage == null && !mediaItem.IsMetadataExtracted)
+            {
+                Task.Run(async () =>
+                {
+                    var image = await MediaManager.Extractor.GetMediaImage(mediaItem).ConfigureAwait(false) as Bitmap;
+                    callback.OnBitmap(image);
+                }).ConfigureAwait(false);
+            }
+            return mediaItem?.DisplayImage as Bitmap;
+        }
+
+        public ICharSequence GetCurrentContentTextFormatted(IPlayer player)
+        {
+            return new Java.Lang.String(MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplayTitle);
+        }
+
+        public ICharSequence GetCurrentContentTitleFormatted(IPlayer player)
+        {
+            return new Java.Lang.String(MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplaySubtitle);
+        }
+
+        public ICharSequence GetCurrentSubTextFormatted(IPlayer player)
+        {
+            return new Java.Lang.String(MediaManager.Queue.ElementAtOrDefault(player.CurrentWindowIndex)?.DisplayDescription);
         }
     }
 }

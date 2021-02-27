@@ -1,6 +1,7 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
-using MediaManager.Media;
+using MediaManager.Library;
 using MediaManager.Video;
 
 namespace MediaManager.Player
@@ -19,7 +20,7 @@ namespace MediaManager.Player
         TPlayer Player { get; set; }
     }
 
-    public interface IMediaPlayer : IDisposable
+    public interface IMediaPlayer : IDisposable, INotifyPropertyChanged
     {
 
         //TODO: Maybe introduce a source property to find the current playing item
@@ -27,20 +28,33 @@ namespace MediaManager.Player
 
         IVideoView VideoView { get; set; }
 
+        //TODO: See if we can make this cross platform
+        //object PlaceholderImage { get; set; }
+
         bool AutoAttachVideoView { get; set; }
 
         VideoAspectMode VideoAspect { get; set; }
 
         bool ShowPlaybackControls { get; set; }
 
-        int VideoHeight { get; }
-
         int VideoWidth { get; }
 
+        int VideoHeight { get; }
+
+        float VideoAspectRatio { get; }
+
+        object VideoPlaceholder { get; set; }
+
         /// <summary>
-        /// Adds MediaItem to the Queue and starts playing
+        /// Starts playing the MediaItem
         /// </summary>
         Task Play(IMediaItem mediaItem);
+
+        /// <summary>
+        /// Starts playing the MediaItem at a given time and stops at a specific time.
+        /// Use TimeSpan.Zero for startAt to start at beginning of the MediaItem
+        /// </summary>
+        Task Play(IMediaItem mediaItem, TimeSpan startAt, TimeSpan? stopAt = null);
 
         /// <summary>
         /// Starts playing

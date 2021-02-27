@@ -1,5 +1,6 @@
 ﻿using System;
 using MediaManager;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Playback;
 using MediaManager.Player;
@@ -25,10 +26,10 @@ namespace ElementPlayer.Core.ViewModels
 
         public IMvxAsyncCommand PlayPauseCommand { get; }
 
-        public IMediaItem Current => MediaManager.MediaQueue.Current;
+        public IMediaItem Current => MediaManager.Queue.Current;
 
-        public string CurrentTitle => Current.GetTitle();
-        public string CurrentSubtitle => Current.GetContentTitle();
+        public string CurrentTitle => Current.DisplayTitle;
+        public string CurrentSubtitle => Current.DisplaySubtitle;
 
         public int Buffered => Convert.ToInt32(MediaManager.Buffered.TotalSeconds);
         public int Duration => Convert.ToInt32(MediaManager.Duration.TotalSeconds);

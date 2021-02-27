@@ -9,7 +9,7 @@ namespace MediaManager
     [DebuggerStepThrough]
     public static class CrossMediaManager
     {
-        static Lazy<IMediaManager> implementation = new Lazy<IMediaManager>(() => CreateMediaManager(), System.Threading.LazyThreadSafetyMode.PublicationOnly);
+        private static Lazy<IMediaManager> implementation = new Lazy<IMediaManager>(() => CreateMediaManager(), System.Threading.LazyThreadSafetyMode.PublicationOnly);
 
         /// <summary>
         /// Gets if the plugin is supported on the current platform.
@@ -23,7 +23,7 @@ namespace MediaManager
         {
             get
             {
-                IMediaManager ret = implementation.Value;
+                var ret = implementation.Value;
                 if (ret == null)
                 {
                     throw NotImplementedInReferenceAssembly();
@@ -34,9 +34,9 @@ namespace MediaManager
 
 #if ANDROID
         public static MediaManagerImplementation Android => (MediaManagerImplementation)Current;
-#elif COCOA
+#elif APPLE
         public static MediaManagerImplementation Apple => (MediaManagerImplementation)Current;
-#elif WINDOWS
+#elif UWP
         public static MediaManagerImplementation Windows => (MediaManagerImplementation)Current;
 #elif TIZEN
         public static MediaManagerImplementation Tizen => (MediaManagerImplementation)Current;
@@ -44,7 +44,7 @@ namespace MediaManager
         public static MediaManagerImplementation Wpf => (MediaManagerImplementation)Current;
 #endif
 
-        static IMediaManager CreateMediaManager()
+        private static IMediaManager CreateMediaManager()
         {
 #if NETSTANDARD
             return null;

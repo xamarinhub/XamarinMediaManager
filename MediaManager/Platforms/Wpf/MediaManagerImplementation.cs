@@ -7,7 +7,6 @@ using MediaManager.Platforms.Wpf.Media;
 using MediaManager.Platforms.Wpf.Notificiations;
 using MediaManager.Platforms.Wpf.Player;
 using MediaManager.Platforms.Wpf.Volume;
-using MediaManager.Playback;
 using MediaManager.Player;
 using MediaManager.Volume;
 
@@ -35,47 +34,47 @@ namespace MediaManager
         public WpfMediaPlayer WpfMediaPlayer => (WpfMediaPlayer)MediaPlayer;
         public MediaElement Player => WpfMediaPlayer.Player;
 
-        private IVolumeManager _volumeManager;
-        public override IVolumeManager VolumeManager
+        private IVolumeManager _volume;
+        public override IVolumeManager Volume
         {
             get
             {
-                if (_volumeManager == null)
-                    _volumeManager = new VolumeManager();
-                return _volumeManager;
+                if (_volume == null)
+                    _volume = new VolumeManager();
+                return _volume;
             }
-            set => SetProperty(ref _volumeManager, value);
+            set => SetProperty(ref _volume, value);
         }
 
-        private IMediaExtractor _mediaExtractor;
-        public override IMediaExtractor MediaExtractor
+        private IMediaExtractor _extractor;
+        public override IMediaExtractor Extractor
         {
             get
             {
-                if (_mediaExtractor == null)
-                    _mediaExtractor = new MediaExtractor();
-                return _mediaExtractor;
+                if (_extractor == null)
+                    _extractor = new MediaExtractor();
+                return _extractor;
             }
-            set => SetProperty(ref _mediaExtractor, value);
+            set => SetProperty(ref _extractor, value);
         }
 
 
-        private INotificationManager _notificationManager;
-        public override INotificationManager NotificationManager
+        private INotificationManager _notification;
+        public override INotificationManager Notification
         {
             get
             {
-                if (_notificationManager == null)
-                    _notificationManager = new NotificationManager();
+                if (_notification == null)
+                    _notification = new NotificationManager();
 
-                return _notificationManager;
+                return _notification;
             }
-            set => SetProperty(ref _notificationManager, value);
+            set => SetProperty(ref _notification, value);
         }
 
         public override TimeSpan Position => Player?.Position ?? TimeSpan.Zero;
 
-        public override TimeSpan Duration => Player?.NaturalDuration.TimeSpan ?? TimeSpan.Zero;
+        public override TimeSpan Duration => Player.NaturalDuration.HasTimeSpan ? Player.NaturalDuration.TimeSpan : TimeSpan.Zero;
 
         public override float Speed
         {
@@ -88,8 +87,6 @@ namespace MediaManager
                 Player.SpeedRatio = value;
             }
         }
-
-        public override RepeatMode RepeatMode { get; set; }
 
         protected bool _keepScreenOn;
         public override bool KeepScreenOn
@@ -110,12 +107,12 @@ namespace MediaManager
             }
         }
 
-        private void DisplayRequestActive()
+        protected void DisplayRequestActive()
         {
             NativeMethods.SetThreadExecutionState(NativeMethods.EXECUTION_STATE.DISPLAY_REQUIRED | NativeMethods.EXECUTION_STATE.CONTINUOUS);
         }
 
-        private void DisplayRequestRelease()
+        protected void DisplayRequestRelease()
         {
             NativeMethods.SetThreadExecutionState(NativeMethods.EXECUTION_STATE.CONTINUOUS);
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Platforms.Tizen.Media;
 using MediaManager.Platforms.Tizen.Video;
@@ -10,19 +11,13 @@ using TizenPlayer = Tizen.Multimedia.Player;
 
 namespace MediaManager.Platforms.Tizen.Player
 {
-    public class TizenMediaPlayer : IMediaPlayer<TizenPlayer, VideoView>
+    public class TizenMediaPlayer : MediaPlayerBase, IMediaPlayer<TizenPlayer, VideoView>
     {
         protected MediaManagerImplementation MediaManager = CrossMediaManager.Tizen;
 
         public TizenMediaPlayer()
         {
         }
-
-        public VideoAspectMode VideoAspect { get; set; }
-        public bool ShowPlaybackControls { get; set; } = true;
-
-        public int VideoHeight => 0;
-        public int VideoWidth => 0;
 
         private TizenPlayer _player;
         public TizenPlayer Player
@@ -33,13 +28,34 @@ namespace MediaManager.Platforms.Tizen.Player
                     Initialize();
                 return _player;
             }
-            set
-            {
-                _player = value;
-            }
+            set => SetProperty(ref _player, value);
         }
 
-        protected virtual void Initialize()
+        public override void UpdateVideoAspect(VideoAspectMode videoAspectMode)
+        {
+            if (PlayerView == null)
+                return;
+
+            //TODO: Set on player
+        }
+
+        public override void UpdateShowPlaybackControls(bool showPlaybackControls)
+        {
+            if (PlayerView == null)
+                return;
+
+            //TODO
+        }
+
+        public override void UpdateVideoPlaceholder(object value)
+        {
+            if (PlayerView == null)
+                return;
+
+            //TODO: Implement placeholder
+        }
+
+        public virtual void Initialize()
         {
             Player = new TizenPlayer();
             Player.ErrorOccurred += Player_ErrorOccurred;
@@ -48,68 +64,84 @@ namespace MediaManager.Platforms.Tizen.Player
             Player.BufferingProgressChanged += Player_BufferingProgressChanged;
         }
 
-        private void Player_BufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
+        protected virtual void Player_BufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
         {
             //TODO: Percent is not correct here
             MediaManager.Buffered = TimeSpan.FromMilliseconds(e.Percent);
         }
 
-        private void Player_PlaybackCompleted(object sender, EventArgs e)
+        protected virtual void Player_PlaybackCompleted(object sender, EventArgs e)
         {
-            MediaManager.OnMediaItemFinished(this, new MediaItemEventArgs(MediaManager.MediaQueue.Current));
+            MediaManager.OnMediaItemFinished(this, new MediaItemEventArgs(MediaManager.Queue.Current));
         }
 
-        private void Player_PlaybackInterrupted(object sender, PlaybackInterruptedEventArgs e)
+        protected virtual void Player_PlaybackInterrupted(object sender, PlaybackInterruptedEventArgs e)
         {
 
         }
 
-        private void Player_ErrorOccurred(object sender, PlayerErrorOccurredEventArgs e)
+        protected virtual void Player_ErrorOccurred(object sender, PlayerErrorOccurredEventArgs e)
         {
-            MediaManager.OnMediaItemFailed(this, new MediaItemFailedEventArgs(MediaManager.MediaQueue.Current, new Exception(e.ToString()), e.ToString()));
+            MediaManager.OnMediaItemFailed(this, new MediaItemFailedEventArgs(MediaManager.Queue.Current, new Exception(e.ToString()), e.ToString()));
         }
 
-        public bool AutoAttachVideoView { get; set; } = true;
-
-        public IVideoView VideoView { get; set; }
+        public override IVideoView VideoView { get; set; }
 
         public VideoView PlayerView => VideoView as VideoView;
 
-        public event BeforePlayingEventHandler BeforePlaying;
-        public event AfterPlayingEventHandler AfterPlaying;
-
-        public Task Pause()
+        public override Task Pause()
         {
             Player.Pause();
             return Task.CompletedTask;
         }
 
-        public async Task Play(IMediaItem mediaItem)
+        public override async Task Play(IMediaItem mediaItem)
         {
-            Player.SetSource(mediaItem.ToMediaSource());
+            InvokeBeforePlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+            await Play(mediaItem.ToMediaSource());
+            InvokeAfterPlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+        }
+
+        public override async Task Play(IMediaItem mediaItem, TimeSpan startAt, TimeSpan? stopAt = null)
+        {
+            InvokeBeforePlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+
+            //TODO: Implement stopAt
+
+            await Play(mediaItem.ToMediaSource());
+
+            if (startAt != TimeSpan.Zero)
+                await SeekTo(startAt);
+
+            InvokeAfterPlaying(this, new MediaPlayerEventArgs(mediaItem, this));
+        }
+
+        public virtual async Task Play(MediaSource mediaSource)
+        {
+            Player.SetSource(mediaSource);
             await Player.PrepareAsync();
             Player.Start();
         }
 
-        public Task Play()
+        public override Task Play()
         {
             Player.Start();
             return Task.CompletedTask;
         }
 
-        public async Task SeekTo(TimeSpan position)
+        public override async Task SeekTo(TimeSpan position)
         {
             //TODO: Probably not good
             await Player.SetPlayPositionAsync(Convert.ToInt32(position.TotalMilliseconds), false);
         }
 
-        public Task Stop()
+        public override Task Stop()
         {
             Player.Stop();
             return Task.CompletedTask;
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
             Player.ErrorOccurred -= Player_ErrorOccurred;
             Player.PlaybackInterrupted -= Player_PlaybackInterrupted;

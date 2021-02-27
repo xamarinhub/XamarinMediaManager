@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using ElementPlayer.Core.Assets;
 using MediaManager;
-using MediaManager.Media;
+using MediaManager.Library;
 using MvvmCross.Commands;
 using MvvmCross.Logging;
 using MvvmCross.Navigation;
@@ -24,37 +23,12 @@ namespace ElementPlayer.Core.ViewModels
         public IMvxAsyncCommand<IMediaItem> ItemSelected => new MvxAsyncCommand<IMediaItem>(SelectItem);
         //new MvxAsyncCommand<IMediaItem>(async (item) => await this.NavigationService.Navigate<PlayerViewModel, IMediaItem>(item));
 
-        public override Task Initialize()
+        public override async Task Initialize()
         {
-            var json = ExoPlayerSamples.GetEmbeddedResourceString("media.exolist.json");
-            var list = ExoPlayerSamples.FromJson(json);
-
-            foreach (var item in list)
-            {
-                foreach (var sample in item.Samples)
-                {
-                    if (!string.IsNullOrEmpty(sample.Uri))
-                    {
-                        var mediaItem = new MediaItem(sample.Uri)
-                        {
-                            Title = sample.Name,
-                            Album = item.Name,
-                            FileExtension = sample.Extension ?? ""
-                        };
-                        if (mediaItem.FileExtension == "mpd" || mediaItem.MediaUri.EndsWith(".mpd"))
-                            mediaItem.MediaType = MediaType.Dash;
-                        else if (mediaItem.FileExtension == "ism" || mediaItem.MediaUri.EndsWith(".ism"))
-                            mediaItem.MediaType = MediaType.SmoothStreaming;
-                        else if (mediaItem.FileExtension == "m3u8" || mediaItem.MediaUri.EndsWith(".m3u8"))
-                            mediaItem.MediaType = MediaType.Hls;
-
-                        Items.Add(mediaItem);
-                    }
-                }
-            }
-
-            return base.Initialize();
+            var items = await MediaManager.Library.GetAll<IMediaItem>().ConfigureAwait(false);
+            Items.ReplaceWith(items);
         }
+
         public IList<string> Mp3UrlList => new[]{
             "https://ia800806.us.archive.org/15/items/Mp3Playlist_555/AaronNeville-CrazyLove.mp3",
             "https://ia800605.us.archive.org/32/items/Mp3Playlist_555/CelineDion-IfICould.mp3",
@@ -66,22 +40,14 @@ namespace ElementPlayer.Core.ViewModels
 
         private async Task SelectItem(IMediaItem mediaItem)
         {
-            MediaManager.MediaQueue.Clear();
+            //CrossMediaManager.Current.StepSizeBackward = TimeSpan.FromSeconds(5);
+            //CrossMediaManager.Current.StepSizeForward = TimeSpan.FromSeconds(60);
 
-            await this.NavigationService.Navigate<PlayerViewModel>();
+            await NavigationService.Navigate<PlayerViewModel>();
 
-            var item = await CrossMediaManager.Current.MediaExtractor.CreateMediaItem("https://file-examples.com/wp-content/uploads/2018/04/file_example_MOV_480_700kB.mov");
-            //var image = await CrossMediaManager.Current.MediaExtractor.GetVideoFrame(item, new System.TimeSpan(0,0,2));
-
-            await MediaManager.Play(item);
-
-            //await MediaManager.Play(mediaItem);
+            await MediaManager.Play(mediaItem);
+            //await MediaManager.Play(mediaItem, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(35));
             //await MediaManager.Play(Mp3UrlList);
-
-            /*foreach (var item in Items.Except<string>(new[] { url }))
-            {
-                MediaManager.MediaQueue.Add(new MediaItem(item));
-            }*/
         }
     }
 }

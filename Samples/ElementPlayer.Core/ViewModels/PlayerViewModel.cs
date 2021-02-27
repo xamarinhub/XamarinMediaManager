@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MediaManager;
-using MediaManager.Forms;
+using MediaManager.Library;
 using MediaManager.Media;
 using MediaManager.Playback;
 using MediaManager.Player;
@@ -47,23 +47,24 @@ namespace ElementPlayer.Core.ViewModels
         public IMvxAsyncCommand BrowseCommand => _browseCommand ?? (_browseCommand = new MvxAsyncCommand(
             () => NavigationService.Navigate<BrowseViewModel>()));
 
-        public IMediaItem Current => MediaManager.MediaQueue.Current;
+        public IMediaItem Current => MediaManager.Queue.Current;
 
         private ImageSource _image;
-        public ImageSource Image {
+        public ImageSource Image
+        {
             get => _image;
             set => SetProperty(ref _image, value);
         }
 
         public override async Task Initialize()
         {
-            var item = await CrossMediaManager.Current.MediaExtractor.CreateMediaItem("https://file-examples.com/wp-content/uploads/2018/04/file_example_MOV_480_700kB.mov");
-            var image = await MediaManager.MediaExtractor.GetVideoFrame(item, TimeSpan.FromSeconds(5));
-            Image = image.ToImageSource();
+            //var item = await CrossMediaManager.Current.Extractor.CreateMediaItem("https://file-examples.com/wp-content/uploads/2018/04/file_example_MOV_480_700kB.mov");
+            //var image = await MediaManager.Extractor.GetVideoFrame(item, TimeSpan.FromSeconds(5));
+            //Image = image.ToImageSource();
         }
 
-        public string CurrentTitle => Current.GetTitle();
-        public string CurrentSubtitle => Current.GetContentTitle();
+        public string CurrentTitle => Current.DisplayTitle;
+        public string CurrentSubtitle => Current.DisplaySubtitle;
 
         public int Buffered => Convert.ToInt32(MediaManager.Buffered.TotalSeconds);
         public int Duration => Convert.ToInt32(MediaManager.Duration.TotalSeconds);
@@ -99,7 +100,7 @@ namespace ElementPlayer.Core.ViewModels
             Log.Debug($"Total buffered time is {e.Buffered};");
         }
 
-        private void Current_PositionChanged(object sender, PositionChangedEventArgs e)
+        private void Current_PositionChanged(object sender, MediaManager.Playback.PositionChangedEventArgs e)
         {
             Log.Debug($"Current position is {e.Position};");
             RaisePropertyChanged(() => Position);

@@ -12,8 +12,6 @@ namespace MediaManager.Forms.Platforms.Mac
 
         protected override void OnElementChanged(ElementChangedEventArgs<VideoView> args)
         {
-            base.OnElementChanged(args);
-
             if (args.OldElement != null)
             {
                 args.OldElement.Dispose();
@@ -24,14 +22,18 @@ namespace MediaManager.Forms.Platforms.Mac
                 {
                     //TODO: maybe pass in the NSView to the videoview here
                     _videoView = new MediaManager.Platforms.Mac.Video.VideoView();
-
-                    //TODO: find a better way to set properties on load
-                    _videoView.ShowControls = args.NewElement.ShowControls;
-                    _videoView.VideoAspect = args.NewElement.VideoAspect;
-
                     SetNativeControl(_videoView);
                 }
             }
+
+            base.OnElementChanged(args);
+        }
+
+        protected override void SetBackgroundColor(Color color)
+        {
+            base.SetBackgroundColor(color);
+            if (Control?.Layer != null)
+                Control.Layer.BackgroundColor = color.ToCGColor();
         }
 
         protected override void Dispose(bool disposing)

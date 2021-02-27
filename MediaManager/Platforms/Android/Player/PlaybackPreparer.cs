@@ -26,48 +26,38 @@ namespace MediaManager.Platforms.Android.Player
         {
         }
 
+        //public long SupportedPrepareActions => MediaSessionConnector.IPlaybackPreparer.Actions;
         public long SupportedPrepareActions =>
-                PlaybackStateCompat.ActionPrepare |
-                PlaybackStateCompat.ActionPrepareFromMediaId |
-                PlaybackStateCompat.ActionPrepareFromSearch |
-                PlaybackStateCompat.ActionPrepareFromUri |
-                PlaybackStateCompat.ActionPlayFromMediaId |
-                PlaybackStateCompat.ActionPlayFromSearch |
-                PlaybackStateCompat.ActionPlayFromUri;
+            PlaybackStateCompat.ActionPrepare |
+            PlaybackStateCompat.ActionPrepareFromMediaId |
+            PlaybackStateCompat.ActionPrepareFromSearch |
+            PlaybackStateCompat.ActionPrepareFromUri |
+            PlaybackStateCompat.ActionPlayFromMediaId |
+            PlaybackStateCompat.ActionPlayFromSearch |
+            PlaybackStateCompat.ActionPlayFromUri;
 
-        public string[] GetCommands()
+        public bool OnCommand(IPlayer p0, IControlDispatcher p1, string p2, Bundle p3, ResultReceiver p4)
         {
-            return null;
+            return false;
         }
 
-        public void OnCommand(IPlayer p0, string p1, Bundle p2, ResultReceiver p3)
+        public void OnPrepare(bool p0)
         {
-        }
-
-        public void OnPrepare()
-        {
-            _mediaSource.Clear();
-
-            var mediaItems = MediaManager.MediaQueue.Select(x => x.ToMediaSource()).ToList();
-            _mediaSource.AddMediaSources(mediaItems);
-
+            // _mediaSource is filled through the QueueDataAdapter
             _player.Prepare(_mediaSource);
 
             //Only in case of Prepare set PlayWhenReady to true because we use this to load in the whole queue
-            if(MediaManager.AutoPlay)
-                _player.PlayWhenReady = true;
-            else
-                _player.PlayWhenReady = false;
+            _player.PlayWhenReady = MediaManager.AutoPlay;
         }
 
-        public void OnPrepareFromMediaId(string mediaId, Bundle p1)
+        public void OnPrepareFromMediaId(string p0, bool p1, Bundle p2)
         {
             _mediaSource.Clear();
             var windowIndex = 0;
-            foreach (var mediaItem in MediaManager.MediaQueue)
+            foreach (var mediaItem in MediaManager.Queue)
             {
-                if (mediaItem.MediaId == mediaId)
-                    windowIndex = MediaManager.MediaQueue.IndexOf(mediaItem);
+                if (mediaItem.Id == p0)
+                    windowIndex = MediaManager.Queue.IndexOf(mediaItem);
 
                 _mediaSource.AddMediaSource(mediaItem.ToMediaSource());
             }
@@ -75,25 +65,25 @@ namespace MediaManager.Platforms.Android.Player
             _player.SeekTo(windowIndex, 0);
         }
 
-        public void OnPrepareFromSearch(string searchTerm, Bundle p1)
+        public void OnPrepareFromSearch(string p0, bool p1, Bundle p2)
         {
             _mediaSource.Clear();
-            foreach (var mediaItem in MediaManager.MediaQueue.Where(x => x.Title == searchTerm))
+            foreach (var mediaItem in MediaManager.Queue.Where(x => x.Title == p0))
             {
                 _mediaSource.AddMediaSource(mediaItem.ToMediaSource());
             }
             _player.Prepare(_mediaSource);
         }
 
-        public void OnPrepareFromUri(global::Android.Net.Uri mediaUri, Bundle p1)
+        public void OnPrepareFromUri(global::Android.Net.Uri p0, bool p1, Bundle p2)
         {
             _mediaSource.Clear();
             var windowIndex = 0;
-            foreach (var mediaItem in MediaManager.MediaQueue)
+            foreach (var mediaItem in MediaManager.Queue)
             {
                 var uri = global::Android.Net.Uri.Parse(mediaItem.MediaUri);
-                if (uri.Equals(mediaUri))
-                    windowIndex = MediaManager.MediaQueue.IndexOf(mediaItem);
+                if (uri.Equals(p0))
+                    windowIndex = MediaManager.Queue.IndexOf(mediaItem);
 
                 _mediaSource.AddMediaSource(mediaItem.ToMediaSource());
             }

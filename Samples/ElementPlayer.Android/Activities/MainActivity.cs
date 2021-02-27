@@ -1,12 +1,12 @@
 ﻿using Android.App;
 using Android.Content.PM;
 using Android.OS;
-using Android.Support.Design.Widget;
 using ElementPlayer.Core.ViewModels;
+using Google.Android.Material.BottomNavigation;
 using MediaManager;
 using MvvmCross;
-using MvvmCross.Droid.Support.V7.AppCompat;
 using MvvmCross.Navigation;
+using MvvmCross.Platforms.Android.Views;
 
 namespace ElementPlayer.Android.Activities
 {
@@ -15,9 +15,9 @@ namespace ElementPlayer.Android.Activities
         LaunchMode = LaunchMode.SingleTop,
         Theme = "@style/AppTheme"
         )]
-    public class MainActivity : MvxAppCompatActivity<MainViewModel>
+    public class MainActivity : MvxActivity<MainViewModel>
     {
-        BottomNavigationView bottomNavigation;
+        private BottomNavigationView bottomNavigation;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
